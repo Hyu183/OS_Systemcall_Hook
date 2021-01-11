@@ -1,26 +1,24 @@
+# Ubuntu: 16.04.0
+
 # Cai dat cac goi can thiet
 
-sudo apt-get update
-sudo apt-get upgrade
-sudo apt-get install libncurses5-dev libncursesw5-dev
-sudo apt-get install libssl-dev
-sudo apt-get install libelf-dev
+sudo apt-get install gcc
+sudo apt-get install libncurses5-dev
 sudo apt-get install bison
 sudo apt-get install flex
-sudo apt-get install bc
-sudo apt-get install perl
+sudo apt-get install libssl-dev
+sudo apt-get install libelf-dev
+sudo apt-get update
 
-# Download kernel 3.13 
+# Download kernel 4.4.2 
 
-uname -r (Output: 3.13.0-24-generic)
-
-wget https://mirrors.edge.kernel.org/pub/linux/kernel/v3.x/linux-3.13.tar.xz --no-check-certificate
+wget https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/linux-4.4.2.tar.gz
 
 ## Giai nen vao thuc muc usr/src
 
-sudo tar –xvf linux-3.13.tar.xz –C /usr/src/
+sudo tar -xzvf linux-4.4.2.tar.gz –C /usr/src/
 
-# Sua Make file trong linux3.13
+# Sua Make file trong linux-4.4.2
 
 sudo gedit Makefile
 
@@ -28,35 +26,43 @@ Tim dong:
     core-y += kernel/ mm/ fs/ ipc/ security/ crypto/ block/
 
 Sua thanh:
-    core-y += kernel/ mm/ fs/ ipc/ security/ crypto/ block/ pidname/
+    core-y += kernel/ mm/ fs/ ipc/ security/ crypto/ block/ pidtoname/ pnametoid/
 
-## Tao thu muc pidname trong linux-3.13 (chua source code cho system call se dinh nghia)
+## Tao thu muc pidname trong linux-4.4.2 (chua source code cho system call se dinh nghia)
 
-sudo mkdir pidname
+sudo mkdir pidtoname pnametoid
+
+touch pidtoname/ pidtoname.c Makefile (Copy source codde vao) hoac dung lenh cp, mv 
+
+touch pnametoid/ pnametoid.c Makefile (Copy source codde vao) hoac dung lenh cp, mv 
 
 # Dinh nghia ma cho systemcall moi
 
 ## Sua file syscall_32.tbl
 
-cd /urs/src/linux-3.13/arch/x86/syscalls/
-sudo gedit syscall_32.tbl
+cd /linux-4.4.2/arch/x86/entry/syscalls/
+sudo gedit syscall_64.tbl
 
-400	i386	pidname			pnametoid
-401	i386	pidname			pidtoname
+400	64	pnametoid			sys_pnametoid
+401	64 	pidtoname			sys_pidtoname
 
 # Dinh nghia ham trong systemcall header file
 
 ## Sua file syscalls.h (them vao cuoi truoc #endif)
 
-cd /usr/src/linux-3.13/include/linux
+cd /linux-4.4.2/include/linux
 sudo gedit syscalls.h
 
-asmlinkage int pnametoid(char* name);
-asmlinkage int pidtoname(int pid, char* buf, int len);
-
-# Source code
+asmlinkage long pnametoid(char* name);
+asmlinkage long pidtoname(int pid, char* buf, int len);
 
 # Bien dich kernel
+
+make menuconfig (save config)
+
+make -j4
+
+make modules_install install
 
 # Tham khao
 https://github.com/nguyentathung943/Systemcall_and_Hook

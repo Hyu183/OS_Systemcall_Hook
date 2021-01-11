@@ -5,22 +5,18 @@
 #include <linux/tty.h>
 #include <linux/string.h>
 #include <linux/slab.h>
-#include <linux/printk.h>
 
 #define MAX 64
 
-asmlinkage int pidtoname(int pid, char* buf, int len){
+asmlinkage long sys_pidtoname(int pid, char* buf, int len){
     printk("pidtoname syscall 401\n");
     struct task_struct *task;
     /* GFP_KERNEL - Cap phat ram normal kernel ram. May sleep. */
     char *process_name = kmalloc(MAX, GFP_KERNEL);
-    
-    /* Bao ve task list */
-    read_lock(&tasklist_lock);
 
     /* Duyet qua cac task */
     for_each_process(task){
-        if (task_pid_nr(task) == pid){
+        if (task->pid == pid){
             strcpy(process_name, task->comm);
         
             if(strlen(task->comm) <= MAX)
@@ -33,18 +29,11 @@ asmlinkage int pidtoname(int pid, char* buf, int len){
             /* Neu len process_name lon hon len(buf) */
             if (strlen(process_name) > len - 1)
             {
-                /* Go lock */
-                read_unlock(&tasklist_lock);
                 return strlen(process_name);
             }
-            
-            /* Go lock */
-            read_unlock(&tasklist_lock);
             else return 0;
         }
     }
-    /* Go lock */
-    read_unlock(&tasklist_lock);
     /* Loi (Khong tim thay) */
     return -1;
 }
