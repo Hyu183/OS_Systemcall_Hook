@@ -1,5 +1,6 @@
+#include <linux/unistd.h>
 #include <linux/init.h>
- #include <linux/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/syscalls.h>
@@ -11,7 +12,6 @@
 #include <linux/kallsyms.h>
 #include <linux/slab.h>
 
-#include <unistd.h>
 
 #include <asm/unistd.h>
 #include <asm/cacheflush.h>
@@ -21,41 +21,45 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("@18120168 @18120183");
 
 
-/*MY sys_call_table address*/
+/*My sys_call_table address*/
 //ffffffff81e00280
 //grep -w sys_call_table /boot/System.map-$(uname -r)
 void **SYS_CALL_TABLE = NULL;
 
 asmlinkage int (*original_open)(const char *pathname, int flags, mode_t mode);
-asmlinkage int (*original_write)(int fd, const void *buf, size_t count);
+asmlinkage ssize_t (*original_write)(int fd, const void *buf, size_t count);
 
 /*hook*/
 asmlinkage int hookOpen(const char *pathname, int flags, mode_t mode) {
     char *buf = (char*)kmalloc(256, GFP_KERNEL);
     copy_from_user(buf,pathname,256);
 
-    printk(KERN_INFO"[Hook Open] Process name open file: \"%s\" | Filename: %s\n",current->comm,buf);
+    //for test
+    if(strcmp(current->comm,"test") == 0){
+        printk(KERN_INFO"[Hook Open] Process name open file: \"%s\" | Filename: %s\n",current->comm,buf);
+ 	}
+    
     kfree(buf);
 
     return original_open(pathname,flags,mode);
 }
 
-asmlinkage int hookWrite(int fd, const void *buf, size_t count){
-    //char *proclink = (char*)kmalloc(1024,GFP_KERNEL);
+asmlinkage ssize_t hookWrite(int fd, const void *buf, size_t count){
+    //get path to file
     char *filename = (char*)kmalloc(256, GFP_KERNEL);
-    //ssize_t r =0;
+    char *path = d_path(&files_fdtable(current->files)->fd[fd]->f_path, filename, 256);
 
-    char* cwd = d_path(&files_fdtable(current->files)->fd[fd]->f_path, filename, 256);
-    // sprintf(proclink, "/proc/self/fd/%d", fd);
-    // r = readlink(proclink, filename, 1024);
-    // filename[r] = '\0';
+    //bytes wrote
+    ssize_t bytes = (*original_write)(fd,buf,count);
 
+    //for test
+    if(strcmp(current->comm,"test") == 0){
+        printk(KERN_INFO"[Hook Write] Process name write file: \"%s\" | Filename: %s | Write %zu bytes\n",current->comm,path,bytes);
+    }
 
-    printk(KERN_INFO"[Hook Write] Process name write file: \"%s\" | Filename: %s | Write %zu bytes\n",current->comm,cwd,count);
-    //kfree(proclink);
     kfree(filename);
 
-    return original_write(fd,buf,count);
+    return bytes;
 }
 
 
@@ -88,16 +92,17 @@ int make_ro(unsigned long address){
 static int __init init_Hook(void){
     printk(KERN_INFO "Hook loaded successfully..\n");
 
-    /*MY sys_call_table address*/
-    //printk("The address of sys_call_table is: %lx\n", kallsyms_lookup_name("sys_call_table"));
-    SYS_CALL_TABLE = (void*)0xffffffff81e00280;
-    printk(KERN_INFO"syscall table\n" );
+    /*My sys_call_table address*/
+    //SYS_CALL_TABLE = (void*)0xffffffff81e00280;
+
+    //auto get sys_call_table addr
+    SYS_CALL_TABLE = (void*)kallsyms_lookup_name("sys_call_table");
     
-    /* Replace custom syscall with the correct system call name (write,open,etc) to hook*/
+    /* Get open and write syscall */
     original_open = SYS_CALL_TABLE[__NR_open];
-    printk(KERN_INFO"syscall open\n" );
+
     original_write = SYS_CALL_TABLE[__NR_write];
-    printk(KERN_INFO"syscall write\n" );
+
     /*Disable page protection*/
     make_rw((unsigned long)SYS_CALL_TABLE);
 
@@ -110,8 +115,6 @@ static int __init init_Hook(void){
 
 
 static void __exit exit_Hook(void){
-    printk(KERN_INFO "Unloaded Hook successfully\n");
-
     /*Restore original system call */
     SYS_CALL_TABLE[__NR_open] = original_open;
     SYS_CALL_TABLE[__NR_write] = original_write;
@@ -119,7 +122,7 @@ static void __exit exit_Hook(void){
     /*Renable page protection*/
     make_ro((unsigned long)SYS_CALL_TABLE);
 
-
+    printk(KERN_INFO "Unloaded Hook successfully\n");
 }
 
 
