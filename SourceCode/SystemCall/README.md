@@ -1,6 +1,8 @@
 # Ubuntu: 16.04.0
 
-# Cai dat cac goi can thiet
+Phiên bản của kernel của ubuntu là 4.4.0-21-generic
+
+# Cài đặt các gói cần thiết
 
 sudo apt-get install gcc
 sudo apt-get install libncurses5-dev
@@ -14,31 +16,31 @@ sudo apt-get update
 
 wget https://mirrors.edge.kernel.org/pub/linux/kernel/v4.x/linux-4.4.2.tar.gz
 
-## Giai nen vao thuc muc usr/src
+## Giải nén vào thư mục usr/src
 
 sudo tar -xzvf linux-4.4.2.tar.gz –C /usr/src/
 
-# Sua Make file trong linux-4.4.2
+# Sửa Make file trong linux-4.4.2
 
 sudo gedit Makefile
 
-Tim dong:
+Tìm dòng:
     core-y += kernel/ mm/ fs/ ipc/ security/ crypto/ block/
 
-Sua thanh:
+Sửa thành:
     core-y += kernel/ mm/ fs/ ipc/ security/ crypto/ block/ pidtoname/ pnametoid/
 
-## Tao thu muc pidname trong linux-4.4.2 (chua source code cho system call se dinh nghia)
+## Tạo thư mục pidtoname và pnametoid trong linux-4.4.2 (Nơi chứa định nghĩa của systemcall)
 
 sudo mkdir pidtoname pnametoid
 
-touch pidtoname/ pidtoname.c Makefile (Copy source codde vao) hoac dung lenh cp, mv 
+sudo touch pidtoname/ pidtoname.c Makefile (Copy source codde vào) hoặc dùng lệnh sudo cp, mv 
 
-touch pnametoid/ pnametoid.c Makefile (Copy source codde vao) hoac dung lenh cp, mv 
+sudo touch pnametoid/ pnametoid.c Makefile (Copy source codde vào) hoặc dùng lệnh sudo cp, mv 
 
-# Dinh nghia ma cho systemcall moi
+# Định nghĩa mã cho hàm systemcall
 
-## Sua file syscall_32.tbl
+## Sửa file syscall_32.tbl
 
 cd /linux-4.4.2/arch/x86/entry/syscalls/
 sudo gedit syscall_64.tbl
@@ -46,9 +48,9 @@ sudo gedit syscall_64.tbl
 400	64	pnametoid			sys_pnametoid
 401	64 	pidtoname			sys_pidtoname
 
-# Dinh nghia ham trong systemcall header file (thêm vào trước #endif)
+# Định nghĩa hàm syscall trong header file
 
-## Sua file syscalls.h (them vao cuoi truoc #endif)
+## Sửa file syscalls.h (thêm vào cuối trước #endif)
 
 cd /linux-4.4.2/include/linux
 sudo gedit syscalls.h
@@ -56,7 +58,7 @@ sudo gedit syscalls.h
 asmlinkage long pnametoid(char* name);
 asmlinkage long pidtoname(int pid, char* buf, int len);
 
-# Bien dich kernel
+# Biên dịch kernel
 
 make menuconfig (save config)
 
@@ -68,5 +70,5 @@ make modules_install install
 
 make (trong folder test)
 
-# Tham khao
+# Tham khảo
 https://github.com/nguyentathung943/Systemcall_and_Hook
